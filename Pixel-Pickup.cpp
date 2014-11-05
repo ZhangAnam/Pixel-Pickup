@@ -40,7 +40,6 @@ void on_Mouse_Video(int event, int x, int y, int flag, void* param) {
 	rect->x = x;
 	rect->y = y;
 	if (event == CV_EVENT_LBUTTONUP) {
-		cout << "x:" << x << "  |   y:" << y << endl;
 		rect->stage = 1;
 	}
 }
@@ -50,19 +49,14 @@ void on_Mouse_Detail(int event, int x, int y, int flag, void* param) {
 	rect->sub_x = x;
 	rect->sub_y = y;
 	if (event == CV_EVENT_LBUTTONUP) {
-		cout << "x:" << rect->x << "  |   y:" << rect->y << endl;
-		cout << "w:" << rect->width << "  |   h:" << rect->height << endl;
-		cout << "s:" << x << "  |   s:" << y << endl;
-		cout << "c:"
+		cout << "x:"
 				<< (double) rect->x - (double) rect->width / 2
 						+ (double) rect->sub_x * (rect->width + 1)
-								/ (double) WINDOW << "  |   c:"
+								/ (double) WINDOW << "  |   y:"
 				<< (double) rect->y - (double) rect->width / 2
 						+ (double) rect->sub_y * (rect->height + 1)
 								/ (double) WINDOW << endl;
-		cout << (double) rect->x << endl << (double) rect->width / 2 << endl
-				<< (double) rect->sub_x * (rect->width + 1) / (double) WINDOW
-				<< endl;
+
 		rect->stage = 2;
 	}
 }
