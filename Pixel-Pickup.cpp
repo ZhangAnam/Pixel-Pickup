@@ -16,26 +16,54 @@
 #define VK_UP 82
 #define VK_RIGHT 83
 #define VK_DOWN 84
+#define BLANK 32
+
+#define WINDOW 301
 
 using namespace std;
 using namespace cv;
 
-typedef struct _subRect
-{
+typedef struct _subRect {
 	int width;
 	int height;
 	int x;
 	int y;
+	int sub_x;
+	int sub_y;
+	int stage;
 } subRect;
+void on_Mouse_Void(int event, int x, int y, int flag, void* param) {
 
-void on_Mouse(int event, int x, int y, int flag, void* param){
+}
+void on_Mouse_Video(int event, int x, int y, int flag, void* param) {
 	subRect* rect = (subRect*) param;
 	rect->x = x;
 	rect->y = y;
-
-	if(event == CV_EVENT_LBUTTONUP)
-	{
+	if (event == CV_EVENT_LBUTTONUP) {
 		cout << "x:" << x << "  |   y:" << y << endl;
+		rect->stage = 1;
+	}
+}
+
+void on_Mouse_Detail(int event, int x, int y, int flag, void* param) {
+	subRect* rect = (subRect*) param;
+	rect->sub_x = x;
+	rect->sub_y = y;
+	if (event == CV_EVENT_LBUTTONUP) {
+		cout << "x:" << rect->x << "  |   y:" << rect->y << endl;
+		cout << "w:" << rect->width << "  |   h:" << rect->height << endl;
+		cout << "s:" << x << "  |   s:" << y << endl;
+		cout << "c:"
+				<< (double) rect->x - (double) rect->width / 2
+						+ (double) rect->sub_x * (rect->width + 1)
+								/ (double) WINDOW << "  |   c:"
+				<< (double) rect->y - (double) rect->width / 2
+						+ (double) rect->sub_y * (rect->height + 1)
+								/ (double) WINDOW << endl;
+		cout << (double) rect->x << endl << (double) rect->width / 2 << endl
+				<< (double) rect->sub_x * (rect->width + 1) / (double) WINDOW
+				<< endl;
+		rect->stage = 2;
 	}
 }
 
@@ -45,74 +73,113 @@ int main() {
 	rect.width = 100;
 	rect.x = 0;
 	rect.y = 0;
+	rect.sub_x = 0;
+	rect.sub_y = 0;
+	rect.stage = 0;
+
+	int x1, x2, y1, y2;
+	x1 = y1 = 0;
+	x2 = y2 = 100;
+	Mat detail;
+	Mat detail_tmp;
 
 	VideoCapture cap(0);
-	while(true){
+	while (true) {
 		Mat frame;
 		cap >> frame;
-		int key = waitKey(30) %256;
-		switch(key){
-		case VK_UP:
-			if(frame.rows > 0 && rect.width < frame.cols - 1 - 5 && rect.height < frame.rows- 1 - 5){
-				rect.height +=5;
-				rect.width +=5;
+		int key = waitKey(30) % 256;
+		if (rect.stage == 0) {
+			switch (key) {
+			case VK_UP:
+				if (frame.rows > 0 && rect.width < frame.cols - 1 - 5
+						&& rect.height < frame.rows - 1 - 5) {
+					rect.height += 5;
+					rect.width += 5;
+				}
+				break;
+			case VK_DOWN:
+				if (frame.rows > 0 && rect.width > 5 && rect.height > 5) {
+					rect.height -= 5;
+					rect.width -= 5;
+				}
+				break;
+			case VK_LEFT:
+				if (frame.cols > 0 && rect.width > 20 && rect.height > 20) {
+					rect.height -= 20;
+					rect.width -= 20;
+				}
+				break;
+			case VK_RIGHT:
+				if (frame.cols > 0 && rect.width < frame.cols - 1 - 20
+						&& rect.height < frame.rows - 1 - 20) {
+					rect.height += 20;
+					rect.width += 20;
+				}
+				break;
 			}
+
+		}
+		if (key == KEY_ESC) {
 			break;
-		case VK_DOWN:
-			if(frame.rows > 0 && rect.width >5   && rect.height > 5){
-				rect.height -=5;
-				rect.width -=5;
+		}
+		if (key == BLANK) {
+			rect.stage = 0;
+		}
+		if (rect.stage == 0) {
+			setMouseCallback("detail", on_Mouse_Void, (void*) &rect);
+			setMouseCallback("video", on_Mouse_Video, (void*) &rect);
+
+			x1 = rect.x - rect.width / 2;
+			x2 = rect.x + rect.width / 2;
+			y1 = rect.y - rect.height / 2;
+			y2 = rect.y + rect.height / 2;
+			if (x1 < 0) {
+				x2 -= x1;
+				x1 = 0;
 			}
-			break;
-		case VK_LEFT:
-			if(frame.cols > 0 && rect.width > 20 && rect.height > 20){
-				rect.height -=20;
-				rect.width -=20;
+			if (x2 > frame.cols - 1) {
+				x1 += frame.cols - 1 - x2;
+				x2 = frame.cols - 1;
 			}
-			break;
-		case VK_RIGHT:
-			if(frame.cols > 0 && rect.width < frame.cols - 1 - 20 && rect.height < frame.rows- 1 - 20 ){
-				rect.height +=20;
-				rect.width +=20;
+			if (y1 < 0) {
+				y2 -= y1;
+				y1 = 0;
 			}
-			break;
+			if (y2 > frame.rows - 1) {
+				y1 += frame.rows - 1 - y2;
+				y2 = frame.rows - 1;
+			}
+			resize(frame.rowRange(y1, y2).colRange(x1, x2), detail,
+					Size(WINDOW, WINDOW));
+			detail.copyTo(detail_tmp);
+			line(detail_tmp, Point2i(150, 130), Point2i(150, 170),
+					Scalar(0, 0, 255));
+			line(detail_tmp, Point2i(130, 150), Point2i(170, 150),
+					Scalar(0, 0, 255));
+		} else if (rect.stage == 1) {
+			setMouseCallback("video", on_Mouse_Void, (void*) &rect);
+			setMouseCallback("detail", on_Mouse_Detail, (void*) &rect);
+			if (!detail.empty()) {
+				detail.copyTo(detail_tmp);
+				line(detail_tmp, Point2i(rect.sub_x - 30, rect.sub_y),
+						Point2i(rect.sub_x + 30, rect.sub_y),
+						Scalar(0, 0, 255));
+				line(detail_tmp, Point2i(rect.sub_x, rect.sub_y - 30),
+						Point2i(rect.sub_x, rect.sub_y + 30),
+						Scalar(0, 0, 255));
+			}
+		} else {
+			setMouseCallback("video", on_Mouse_Void, (void*) &rect);
+			setMouseCallback("detail", on_Mouse_Void, (void*) &rect);
 		}
 
-		if(key == KEY_ESC){
-			break;
-		}
+		rectangle(frame, Point2i(x1, y1), Point2i(x2, y2), Scalar::all(255), 3);
+		rect.x = (x1 + x2) / 2;
+		rect.y = (y1 + y2) / 2;
 
-		setMouseCallback("video",on_Mouse,(void*)&rect);
-		int x1 = rect.x - rect.width/2;
-		int x2 = rect.x + rect.width/2;
-		int y1 = rect.y - rect.height/2;
-		int y2 = rect.y + rect.height/2;
-		if(x1<0){
-			x2-=x1;
-			x1 = 0;
-		}
-		if(x2>frame.cols-1){
-			x1+=frame.cols-1-x2;
-			x2 = frame.cols-1;
-		}
-		if(y1<0){
-			y2-=y1;
-			y1 = 0;
-		}
-		if(y2>frame.rows-1){
-			y1+=frame.rows-1-y2;
-			y2 = frame.rows-1;
-		}
-		Mat detail;
-		resize(frame.rowRange(y1,y2).colRange(x1,x2),detail,Size(301,301));
-		line(detail,Point2i(150,130),Point2i(150,170),Scalar(0,0,255));
-		line(detail,Point2i(130,150),Point2i(170,150),Scalar(0,0,255));
-
-		rectangle(frame,Point2i(x1,y1),Point2i(x2,y2),Scalar::all(255),3);
-
-		if (!frame.empty()){
-			imshow("video",frame);
-			imshow("detail",detail);
+		if (!frame.empty()) {
+			imshow("video", frame);
+			imshow("detail", detail_tmp);
 		}
 
 	}
